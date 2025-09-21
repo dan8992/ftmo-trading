@@ -1,0 +1,116 @@
+name: GitOps Deployment
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'infra/**'
+      - 'services/**/k8s-*.yaml'
+      - 'charts/**'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAMESPACE: dan8992
+
+jobs:
+  update-manifests:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Configure Git
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        
+    - name: Update image tags in manifests
+      run: |
+        # Get the latest commit SHA
+        COMMIT_SHA=${GITHUB_SHA::8}
+        
+        # Update image tags in Kubernetes manifests
+        find services -name "k8s-*.yaml" -type f -exec sed -i "s|:latest|:main-${COMMIT_SHA}|g" {} \;
+        find infra -name "*.yaml" -type f -exec sed -i "s|:latest|:main-${COMMIT_SHA}|g" {} \;
+        
+        # Update Helm chart values if they exist
+        if [ -f charts/ftmo-trading/values.yaml ]; then
+          sed -i "s/tag: latest/tag: main-${COMMIT_SHA}/g" charts/ftmo-trading/values.yaml
+        fi
+        
+    - name: Create manifests branch if it doesn't exist
+      run: |
+        git fetch origin
+        if ! git rev-parse --verify origin/manifests; then
+          git checkout --orphan manifests
+          git rm -rf .
+          git commit --allow-empty -m "Initial manifests branch"
+          git push origin manifests
+          git checkout main
+        fi
+        
+    - name: Checkout manifests branch
+      run: |
+        git checkout manifests
+        git merge main --no-edit
+        
+    - name: Commit updated manifests
+      run: |
+        git add .
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+        else
+          git commit -m "Update manifests for commit ${GITHUB_SHA::8}"
+          git push origin manifests
+        fi
+
+  validate-manifests:
+    runs-on: ubuntu-latest
+    needs: update-manifests
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: manifests
+        
+    - name: Validate Kubernetes manifests
+      uses: instrumenta/kubeval-action@master
+      with:
+        files: infra/k8s-base,services
+        
+    - name: Validate Helm charts
+      run: |
+        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+        if [ -d charts ]; then
+          for chart in charts/*/; do
+            helm lint "$chart"
+            helm template "$chart" --dry-run
+          done
+        fi
+
+  notify-argocd:
+    runs-on: ubuntu-latest
+    needs: [update-manifests, validate-manifests]
+    if: success()
+    
+    steps:
+    - name: Trigger ArgoCD Sync
+      run: |
+        echo "Manifests updated - ArgoCD will automatically sync"
+        # Optional: Add webhook to trigger immediate sync
+        # curl -X POST "${{ secrets.ARGOCD_WEBHOOK_URL }}"
+        
+    - name: Notify deployment status
+      uses: 8398a7/action-slack@v3
+      if: always()
+      with:
+        status: ${{ job.status }}
+        text: |
+          GitOps deployment ${{ job.status }}
+          Commit: ${{ github.sha }}
+          Branch: ${{ github.ref }}
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
