@@ -12,9 +12,42 @@ import os
 from typing import Dict, List, Optional
 import numpy as np
 
-# Import our services
-from finbert_sentiment_service import FinBERTSentimentService
-from technical_pattern_service import TechnicalPatternService, TechnicalSignal
+# Note: Services communicate via HTTP APIs, not direct imports
+# from finbert_sentiment_service import FinBERTSentimentService
+# from technical_pattern_service import TechnicalPatternService, TechnicalSignal
+
+# Temporary placeholder classes for microservices architecture
+class TechnicalSignal:
+    def __init__(self, timestamp, currency_pair, signal_type, confidence, reasoning, indicators, risk_score):
+        self.timestamp = timestamp
+        self.currency_pair = currency_pair
+        self.signal_type = signal_type
+        self.confidence = confidence
+        self.reasoning = reasoning
+        self.indicators = indicators
+        self.risk_score = risk_score
+
+class PlaceholderSentimentService:
+    async def initialize_model(self):
+        logger.info("Sentiment service placeholder initialized")
+    
+    async def process_sentiment_batch(self):
+        logger.info("Processing sentiment batch (placeholder)")
+    
+    async def calculate_aggregate_sentiment(self, currency_pair, hours_back=24):
+        return {'avg_sentiment': 0.0, 'article_count': 0, 'sentiment_volatility': 0.0}
+
+class PlaceholderTechnicalService:
+    async def analyze_currency_pair(self, currency_pair):
+        return TechnicalSignal(
+            timestamp=datetime.now(),
+            currency_pair=currency_pair,
+            signal_type='HOLD',
+            confidence=0.5,
+            reasoning='Placeholder signal',
+            indicators={'rsi': 50.0},
+            risk_score=0.5
+        )
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -29,9 +62,9 @@ class SignalGenerationEngine:
             'password': os.getenv('POSTGRES_PASSWORD')
         }
 
-        # Initialize component services
-        self.sentiment_service = FinBERTSentimentService()
-        self.technical_service = TechnicalPatternService()
+        # Initialize component services (placeholders for microservices)
+        self.sentiment_service = PlaceholderSentimentService()
+        self.technical_service = PlaceholderTechnicalService()
 
         # Signal fusion weights
         self.fusion_weights = {
