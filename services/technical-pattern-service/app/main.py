@@ -36,7 +36,7 @@ class TechnicalPatternService:
             'user': os.getenv('POSTGRES_USER', 'finrl_user'),
             'password': os.getenv('POSTGRES_PASSWORD')
         }
-        
+
         # Technical analysis parameters
         self.lookback_periods = {
             'short': 50,   # 50 minutes
@@ -50,21 +50,21 @@ class TechnicalPatternService:
         try:
             query = """
                 SELECT timestamp, open, high, low, close, volume
-                FROM trading_data_1m 
-                WHERE symbol = %s 
+                FROM trading_data_1m
+                WHERE symbol = %s
                     AND timestamp > %s
                 ORDER BY timestamp ASC
             """
-            
+
             cutoff_time = datetime.now() - timedelta(minutes=lookback_minutes)
             df = pd.read_sql_query(query, conn, params=(symbol, cutoff_time))
-            
+
             if not df.empty:
                 df['timestamp'] = pd.to_datetime(df['timestamp'])
                 df.set_index('timestamp', inplace=True)
-                
+
             return df
-            
+
         finally:
             conn.close()
 
@@ -72,58 +72,58 @@ class TechnicalPatternService:
         """Calculate comprehensive technical indicators"""
         if len(df) < 50:
             return {}
-        
+
         indicators = {}
-        
+
         # Price data
         high = df['high'].values
         low = df['low'].values
         close = df['close'].values
         volume = df['volume'].values
-        
+
         try:
             # Moving Averages
             indicators['sma_20'] = talib.SMA(close, timeperiod=20)
             indicators['sma_50'] = talib.SMA(close, timeperiod=50)
             indicators['ema_12'] = talib.EMA(close, timeperiod=12)
             indicators['ema_26'] = talib.EMA(close, timeperiod=26)
-            
+
             # MACD
             macd, macd_signal, macd_hist = talib.MACD(close, fastperiod=12, slowperiod=26, signalperiod=9)
             indicators['macd'] = macd
             indicators['macd_signal'] = macd_signal
             indicators['macd_histogram'] = macd_hist
-            
+
             # RSI
             indicators['rsi'] = talib.RSI(close, timeperiod=14)
-            
+
             # Bollinger Bands
             bb_upper, bb_middle, bb_lower = talib.BBANDS(close, timeperiod=20, nbdevup=2, nbdevdn=2)
             indicators['bb_upper'] = bb_upper
             indicators['bb_middle'] = bb_middle
             indicators['bb_lower'] = bb_lower
-            
+
             # Stochastic
             slowk, slowd = talib.STOCH(high, low, close, fastk_period=14, slowk_period=3, slowd_period=3)
             indicators['stoch_k'] = slowk
             indicators['stoch_d'] = slowd
-            
+
             # ADX (Trend Strength)
             indicators['adx'] = talib.ADX(high, low, close, timeperiod=14)
-            
+
             # ATR (Volatility)
             indicators['atr'] = talib.ATR(high, low, close, timeperiod=14)
-            
+
             # Volume indicators
             indicators['obv'] = talib.OBV(close, volume)
-            
+
             # Support/Resistance levels
             indicators['resistance'] = self.calculate_resistance_levels(df)
             indicators['support'] = self.calculate_support_levels(df)
-            
+
         except Exception as e:
             logger.warning(f"Error calculating technical indicators: {e}")
-        
+
         return indicators
 
     def calculate_resistance_levels(self, df: pd.DataFrame, window: int = 20) -> List[float]:
@@ -146,24 +146,24 @@ class TechnicalPatternService:
             'momentum': 'NEUTRAL',
             'volatility': 'NORMAL'
         }
-        
+
         if len(df) < 50 or not indicators:
             return patterns
-        
+
         try:
             current_price = df['close'].iloc[-1]
-            
+
             # Trend Direction Analysis
             sma_20 = indicators.get('sma_20', [])
             sma_50 = indicators.get('sma_50', [])
-            
+
             if len(sma_20) > 0 and len(sma_50) > 0:
                 if not np.isnan(sma_20[-1]) and not np.isnan(sma_50[-1]):
                     if current_price > sma_20[-1] > sma_50[-1]:
                         patterns['trend_direction'] = 'BULLISH'
                     elif current_price < sma_20[-1] < sma_50[-1]:
                         patterns['trend_direction'] = 'BEARISH'
-            
+
             # ADX for trend strength
             adx = indicators.get('adx', [])
             if len(adx) > 0 and not np.isnan(adx[-1]):
@@ -171,18 +171,18 @@ class TechnicalPatternService:
                     patterns['trend_strength'] = min(adx[-1] / 50.0, 1.0)
                 else:
                     patterns['trend_strength'] = 0.0
-            
+
             # MACD for momentum
             macd = indicators.get('macd', [])
             macd_signal = indicators.get('macd_signal', [])
-            
+
             if len(macd) > 0 and len(macd_signal) > 0:
                 if not np.isnan(macd[-1]) and not np.isnan(macd_signal[-1]):
                     if macd[-1] > macd_signal[-1]:
                         patterns['momentum'] = 'BULLISH'
                     elif macd[-1] < macd_signal[-1]:
                         patterns['momentum'] = 'BEARISH'
-            
+
             # ATR for volatility
             atr = indicators.get('atr', [])
             if len(atr) > 0 and not np.isnan(atr[-1]):
@@ -191,17 +191,17 @@ class TechnicalPatternService:
                     patterns['volatility'] = 'HIGH'
                 elif atr_pct < 0.2:
                     patterns['volatility'] = 'LOW'
-                    
+
         except Exception as e:
             logger.warning(f"Error analyzing trend patterns: {e}")
-        
+
         return patterns
 
     def generate_trading_signal(self, df: pd.DataFrame, indicators: Dict, patterns: Dict) -> TechnicalSignal:
         """Generate trading signal based on technical analysis"""
         current_time = datetime.now()
         currency_pair = 'EURUSD'  # Will be passed as parameter
-        
+
         if len(df) < 50 or not indicators:
             return TechnicalSignal(
                 timestamp=current_time,
@@ -212,14 +212,14 @@ class TechnicalPatternService:
                 indicators={},
                 risk_score=1.0
             )
-        
+
         signal_strength = 0.0
         reasoning_parts = []
         risk_factors = []
-        
+
         try:
             current_price = df['close'].iloc[-1]
-            
+
             # RSI Analysis
             rsi = indicators.get('rsi', [])
             if len(rsi) > 0 and not np.isnan(rsi[-1]):
@@ -229,7 +229,7 @@ class TechnicalPatternService:
                 elif rsi[-1] > 70:
                     signal_strength -= 0.3
                     reasoning_parts.append(f"RSI overbought ({rsi[-1]:.1f})")
-            
+
             # MACD Analysis
             macd = indicators.get('macd', [])
             macd_signal = indicators.get('macd_signal', [])
@@ -242,7 +242,7 @@ class TechnicalPatternService:
                     elif macd[-2] >= macd_signal[-2] and macd[-1] < macd_signal[-1]:
                         signal_strength -= 0.4
                         reasoning_parts.append("MACD bearish crossover")
-            
+
             # Bollinger Bands Analysis
             bb_upper = indicators.get('bb_upper', [])
             bb_lower = indicators.get('bb_lower', [])
@@ -254,7 +254,7 @@ class TechnicalPatternService:
                     elif current_price >= bb_upper[-1]:
                         signal_strength -= 0.2
                         reasoning_parts.append("Price at upper Bollinger Band")
-            
+
             # Trend confirmation
             if patterns['trend_direction'] == 'BULLISH' and signal_strength > 0:
                 signal_strength += 0.2 * patterns['trend_strength']
@@ -262,20 +262,20 @@ class TechnicalPatternService:
             elif patterns['trend_direction'] == 'BEARISH' and signal_strength < 0:
                 signal_strength -= 0.2 * patterns['trend_strength']
                 reasoning_parts.append(f"Bearish trend confirmation (strength: {patterns['trend_strength']:.2f})")
-            
+
             # Risk assessment
             risk_score = 0.5  # Base risk
-            
+
             if patterns['volatility'] == 'HIGH':
                 risk_score += 0.3
                 risk_factors.append("High volatility")
             elif patterns['volatility'] == 'LOW':
                 risk_score -= 0.1
-                
+
             if patterns['trend_strength'] < 0.3:
                 risk_score += 0.2
                 risk_factors.append("Weak trend")
-            
+
             # Determine signal type
             if signal_strength > 0.3:
                 signal_type = 'BUY'
@@ -283,14 +283,14 @@ class TechnicalPatternService:
                 signal_type = 'SELL'
             else:
                 signal_type = 'HOLD'
-            
+
             confidence = min(abs(signal_strength), 1.0)
-            
+
             # Compile reasoning
             reasoning = '; '.join(reasoning_parts) if reasoning_parts else 'No clear signal'
             if risk_factors:
                 reasoning += f' | Risk factors: {", ".join(risk_factors)}'
-            
+
             # Prepare indicators summary
             indicators_summary = {
                 'rsi': rsi[-1] if len(rsi) > 0 and not np.isnan(rsi[-1]) else None,
@@ -300,7 +300,7 @@ class TechnicalPatternService:
                 'volatility': patterns['volatility'],
                 'signal_strength': signal_strength
             }
-            
+
             return TechnicalSignal(
                 timestamp=current_time,
                 currency_pair=currency_pair,
@@ -310,7 +310,7 @@ class TechnicalPatternService:
                 indicators=indicators_summary,
                 risk_score=min(max(risk_score, 0.0), 1.0)
             )
-            
+
         except Exception as e:
             logger.error(f"Error generating trading signal: {e}")
             return TechnicalSignal(
@@ -328,25 +328,25 @@ class TechnicalPatternService:
         try:
             # Fetch OHLC data
             df = await self.get_ohlc_data(symbol, lookback_minutes=480)
-            
+
             if df.empty:
                 logger.warning(f"No data available for {symbol}")
                 return None
-            
+
             # Calculate technical indicators
             indicators = self.calculate_technical_indicators(df)
-            
+
             # Analyze patterns
             patterns = self.analyze_trend_patterns(df, indicators)
-            
+
             # Generate signal
             signal = self.generate_trading_signal(df, indicators, patterns)
             signal.currency_pair = symbol
-            
+
             logger.info(f"Generated signal for {symbol}: {signal.signal_type} (confidence: {signal.confidence:.2f})")
-            
+
             return signal
-            
+
         except Exception as e:
             logger.error(f"Error analyzing {symbol}: {e}")
             return None
@@ -355,12 +355,12 @@ class TechnicalPatternService:
         """Run technical analysis for all monitored currency pairs"""
         currency_pairs = ['EURUSD', 'GBPUSD']
         signals = []
-        
+
         for pair in currency_pairs:
             signal = await self.analyze_currency_pair(pair)
             if signal:
                 signals.append(signal)
-        
+
         return signals
 
     async def run_continuous_technical_analysis(self, interval_minutes: int = 1):
@@ -369,10 +369,10 @@ class TechnicalPatternService:
             try:
                 signals = await self.run_technical_analysis_cycle()
                 logger.info(f"Generated {len(signals)} technical signals")
-                
+
                 # Signals will be consumed by the main signal generation engine
                 await asyncio.sleep(interval_minutes * 60)
-                
+
             except Exception as e:
                 logger.error(f"Error in technical analysis cycle: {e}")
                 await asyncio.sleep(60)

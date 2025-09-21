@@ -6,11 +6,11 @@ import logging
 def simple_sentiment(text):
     positive_words = ['up', 'rise', 'gain', 'profit', 'growth', 'strong', 'good', 'excellent', 'positive', 'bullish', 'buy']
     negative_words = ['down', 'fall', 'loss', 'decline', 'weak', 'bad', 'poor', 'negative', 'bearish', 'sell']
-    
+
     text_lower = text.lower()
     pos_count = sum(1 for word in positive_words if word in text_lower)
     neg_count = sum(1 for word in negative_words if word in text_lower)
-    
+
     if pos_count > neg_count:
         return {"label": "POSITIVE", "score": 0.7 + (pos_count * 0.1)}
     elif neg_count > pos_count:

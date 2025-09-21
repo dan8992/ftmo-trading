@@ -25,14 +25,14 @@ class NewsIngestionService:
             'user': os.getenv('POSTGRES_USER', 'finrl_user'),
             'password': os.getenv('POSTGRES_PASSWORD')
         }
-        
+
         # News API endpoints (using free sources as fallback)
         self.news_sources = {
             'forex_factory': 'https://nfs.faireconomy.media/ff_calendar_thisweek.json',
             'alpha_vantage': f"https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=FOREX:EUR,FOREX:GBP&apikey={os.getenv('ALPHA_VANTAGE_KEY')}",
             'fmp': f"https://financialmodelingprep.com/api/v3/fmp/articles?page=0&size=50&apikey={os.getenv('FMP_KEY', 'demo')}"
         }
-        
+
         self.currency_keywords = {
             'EURUSD': ['EUR', 'USD', 'ECB', 'Federal Reserve', 'Euro', 'Dollar', 'Eurozone', 'Lagarde', 'Powell'],
             'GBPUSD': ['GBP', 'USD', 'BOE', 'Federal Reserve', 'Pound', 'Dollar', 'Brexit', 'Bailey', 'Powell']
@@ -58,7 +58,7 @@ class NewsIngestionService:
                         processed BOOLEAN DEFAULT FALSE
                     );
                 """)
-                
+
                 # Economic events table
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS economic_events (
@@ -75,12 +75,12 @@ class NewsIngestionService:
                         processed BOOLEAN DEFAULT FALSE
                     );
                 """)
-                
+
                 # Indexes for performance
                 cur.execute("CREATE INDEX IF NOT EXISTS idx_news_timestamp ON news_articles(timestamp);")
                 cur.execute("CREATE INDEX IF NOT EXISTS idx_news_processed ON news_articles(processed);")
                 cur.execute("CREATE INDEX IF NOT EXISTS idx_events_time ON economic_events(event_time);")
-                
+
                 conn.commit()
                 logger.info("Tables created successfully")
         finally:
@@ -122,7 +122,7 @@ class NewsIngestionService:
     async def fetch_financial_news(self) -> List[Dict]:
         """Fetch financial news from multiple sources"""
         all_articles = []
-        
+
         # Simulate news fetching (replace with real APIs)
         sample_news = [
             {
@@ -140,15 +140,15 @@ class NewsIngestionService:
                 'timestamp': datetime.now() - timedelta(minutes=15)
             }
         ]
-        
+
         for article in sample_news:
             # Calculate relevance score based on keywords
             relevance_scores = {}
             for pair, keywords in self.currency_keywords.items():
-                score = sum(1 for keyword in keywords 
+                score = sum(1 for keyword in keywords
                            if keyword.lower() in article['title'].lower() + ' ' + article['content'].lower())
                 relevance_scores[pair] = min(score / len(keywords), 1.0)
-            
+
             # Add articles for relevant currency pairs
             for pair, score in relevance_scores.items():
                 if score > 0.1:  # Minimum relevance threshold
@@ -156,20 +156,20 @@ class NewsIngestionService:
                     article_copy['currency_pair'] = pair
                     article_copy['relevance_score'] = score
                     all_articles.append(article_copy)
-        
+
         return all_articles
 
     async def store_news(self, articles: List[Dict]):
         """Store news articles in PostgreSQL"""
         if not articles:
             return
-            
+
         conn = psycopg2.connect(**self.db_config)
         try:
             with conn.cursor() as cur:
                 for article in articles:
                     cur.execute("""
-                        INSERT INTO news_articles 
+                        INSERT INTO news_articles
                         (source, title, content, url, relevance_score, currency_pair, timestamp)
                         VALUES (%s, %s, %s, %s, %s, %s, %s)
                     """, (
@@ -190,13 +190,13 @@ class NewsIngestionService:
         """Store economic events in PostgreSQL"""
         if not events:
             return
-            
+
         conn = psycopg2.connect(**self.db_config)
         try:
             with conn.cursor() as cur:
                 for event in events:
                     cur.execute("""
-                        INSERT INTO economic_events 
+                        INSERT INTO economic_events
                         (event_time, title, country, currency, impact, forecast, previous, actual)
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                         ON CONFLICT DO NOTHING
@@ -218,21 +218,21 @@ class NewsIngestionService:
     async def run_ingestion_cycle(self):
         """Run one complete ingestion cycle"""
         logger.info("Starting news ingestion cycle")
-        
+
         # Fetch and store news
         articles = await self.fetch_financial_news()
         await self.store_news(articles)
-        
+
         # Fetch and store economic events
         events = await self.fetch_forex_factory_calendar()
         await self.store_events(events)
-        
+
         logger.info("Ingestion cycle completed")
 
     async def run_continuous_ingestion(self, interval_minutes: int = 5):
         """Run continuous news ingestion"""
         await self.create_tables()
-        
+
         while True:
             try:
                 await self.run_ingestion_cycle()

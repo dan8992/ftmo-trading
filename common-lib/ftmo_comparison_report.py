@@ -9,10 +9,10 @@ def generate_comparison_report():
     """
     Generate comprehensive comparison between original and FTMO-compliant forward tests
     """
-    
+
     print("🎯 FTMO BLIND FORWARD TEST - COMPREHENSIVE COMPARISON")
     print("=" * 80)
-    
+
     # Original Forward Test Results (from previous run)
     original_results = {
         "data_points": 1000,  # Sample from original test
@@ -24,12 +24,12 @@ def generate_comparison_report():
         "compliance_issues": [
             "Unrealistic P&L calculations",
             "No daily loss limits",
-            "No drawdown monitoring", 
+            "No drawdown monitoring",
             "No position sizing controls",
             "No transaction cost modeling"
         ]
     }
-    
+
     # FTMO-Compliant Forward Test Results (just executed)
     ftmo_results = {
         "data_points": 5000,
@@ -47,10 +47,10 @@ def generate_comparison_report():
         "ftmo_compliant": True,
         "confidence_level": "HIGH (85-95%)"
     }
-    
+
     print("📊 COMPARATIVE ANALYSIS:")
     print("=" * 50)
-    
+
     print("🔴 ORIGINAL FORWARD TEST (BEFORE FIXES):")
     print(f"  • Data Points: {original_results['data_points']:,}")
     print(f"  • Signals Generated: {original_results['signals_generated']:,}")
@@ -62,7 +62,7 @@ def generate_comparison_report():
     print(f"  • Major Issues:")
     for issue in original_results['compliance_issues']:
         print(f"    - {issue}")
-    
+
     print(f"\n🟢 FTMO-COMPLIANT FORWARD TEST (AFTER FIXES):")
     print(f"  • Data Points: {ftmo_results['data_points']:,}")
     print(f"  • Signals Generated: {ftmo_results['signals_generated']:,}")
@@ -77,13 +77,13 @@ def generate_comparison_report():
     print(f"  • Daily Loss Violations: {ftmo_results['daily_loss_violations']}")
     print(f"  • Drawdown Violations: {ftmo_results['drawdown_violations']}")
     print(f"  • Trading Days: {ftmo_results['trading_days']}")
-    
+
     print(f"\n📈 KEY IMPROVEMENTS:")
     print("=" * 50)
-    
+
     # Calculate improvement metrics
     approval_rate = (ftmo_results['trades_approved'] / (ftmo_results['trades_approved'] + ftmo_results['trades_rejected'])) * 100
-    
+
     improvements = [
         ("Realistic Returns", f"{original_results['return_pct']:+.1f}% → {ftmo_results['return_pct']:+.1f}%", "✅ FIXED"),
         ("Position Sizing", "No controls → 2% max risk per trade", "✅ IMPLEMENTED"),
@@ -94,13 +94,13 @@ def generate_comparison_report():
         ("Risk Management", "None → Comprehensive FTMO compliance", "✅ IMPLEMENTED"),
         ("Market Filtering", "None → News/volatility filtering", "✅ IMPLEMENTED")
     ]
-    
+
     for metric, change, status in improvements:
         print(f"  {status} {metric:<20}: {change}")
-    
+
     print(f"\n🎯 FTMO CHALLENGE READINESS ASSESSMENT:")
     print("=" * 50)
-    
+
     # Before vs After comparison
     print("🔴 BEFORE (Original System):")
     print("  • FTMO Pass Probability: 15-25% (LOW)")
@@ -109,20 +109,20 @@ def generate_comparison_report():
     print("    - No risk controls would cause violations")
     print("    - No compliance monitoring")
     print("    - No transaction cost awareness")
-    
+
     print("\n🟢 AFTER (FTMO-Compliant System):")
     print(f"  • FTMO Pass Probability: {ftmo_results['confidence_level']}")
     print("  • Risk Mitigation:")
     print("    - Realistic P&L with transaction costs")
     print("    - Automated daily loss protection")
-    print("    - Real-time drawdown monitoring")  
+    print("    - Real-time drawdown monitoring")
     print("    - Position sizing controls")
     print("    - Market condition filtering")
     print("    - Comprehensive compliance tracking")
-    
+
     print(f"\n📊 STATISTICAL VALIDATION:")
     print("=" * 50)
-    
+
     # Performance metrics comparison
     print("Performance Metrics:")
     print(f"  • Signal Quality: Improved (70%+ confidence threshold)")
@@ -130,17 +130,17 @@ def generate_comparison_report():
     print(f"  • Maximum Drawdown: {ftmo_results['max_drawdown_pct']:.1f}% (within 10% FTMO limit)")
     print(f"  • Win Rate: {ftmo_results['win_rate']:.1f}% (healthy distribution)")
     print(f"  • Risk Per Trade: ~2% (FTMO compliant)")
-    
+
     print(f"\nCompliance Metrics:")
     print(f"  • Daily Loss Violations: {ftmo_results['daily_loss_violations']}/15 days (0%)")
     print(f"  • Drawdown Violations: {ftmo_results['drawdown_violations']} (0%)")
     print(f"  • Position Size Compliance: 100%")
     print(f"  • Transaction Cost Modeling: Included")
     print(f"  • Market Risk Filtering: Active")
-    
+
     print(f"\n🚀 PRODUCTION READINESS VALIDATION:")
     print("=" * 50)
-    
+
     validation_checks = [
         ("System Integration", "All components work together", "✅ PASS"),
         ("FTMO Rule Compliance", "5% daily, 10% total loss limits", "✅ PASS"),
@@ -151,17 +151,17 @@ def generate_comparison_report():
         ("Monitoring Capability", "Real-time compliance tracking", "✅ PASS"),
         ("Scalability", "Can handle full data volume", "✅ PASS")
     ]
-    
+
     pass_count = sum(1 for _, _, status in validation_checks if "PASS" in status)
-    
+
     for check, description, status in validation_checks:
         print(f"  {status} {check:<20}: {description}")
-    
+
     print(f"\n📋 FINAL VALIDATION SCORE: {pass_count}/{len(validation_checks)} ({100*pass_count/len(validation_checks):.0f}%)")
-    
+
     print(f"\n🎯 RECOMMENDATION:")
     print("=" * 50)
-    
+
     if pass_count >= 7:
         print("✅ SYSTEM READY FOR FTMO CHALLENGE")
         print("\nRecommended Next Steps:")
@@ -170,18 +170,18 @@ def generate_comparison_report():
         print("3. Test during different market conditions")
         print("4. Validate against FTMO demo account")
         print("5. Consider live FTMO challenge when demo results are consistent")
-        
+
         print(f"\nExpected FTMO Challenge Outcome:")
         print(f"• Success Probability: {ftmo_results['confidence_level']}")
         print(f"• Based on: Comprehensive risk management + realistic performance")
         print(f"• Timeline: Ready for challenge within 4-6 weeks")
-        
+
     else:
         print("⚠️ SYSTEM NEEDS ADDITIONAL VALIDATION")
         print("• Address failed validation checks")
         print("• Extend testing period")
         print("• Review risk parameters")
-    
+
     print(f"\n💡 KEY SUCCESS FACTORS:")
     print("=" * 50)
     print("✅ Transformed unrealistic +507% returns → realistic +3.88%")
@@ -191,9 +191,9 @@ def generate_comparison_report():
     print("✅ Real-time daily loss and drawdown monitoring")
     print("✅ Market condition awareness and filtering")
     print("✅ Integrated system with all components working together")
-    
+
     print("\n" + "=" * 80)
-    
+
     return ftmo_results['ftmo_compliant']
 
 if __name__ == "__main__":

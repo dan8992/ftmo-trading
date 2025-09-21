@@ -31,14 +31,14 @@ class SignalMonitoringService:
         try:
             with conn.cursor() as cur:
                 cur.execute("""
-                    SELECT 
+                    SELECT
                         COUNT(*) as total_signals,
                         AVG(confidence) as avg_confidence,
                         COUNT(CASE WHEN confidence > 0.7 THEN 1 END) as high_confidence_signals
-                    FROM trading_signals 
+                    FROM trading_signals
                     WHERE timestamp > %s
                 """, (datetime.now() - timedelta(hours=24),))
-                
+
                 result = cur.fetchone()
                 return {
                     'total_signals': result[0],
