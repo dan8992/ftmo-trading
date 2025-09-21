@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-data-collector
+  namespace: dax-trading
+  labels:
+    app: postgres-data-collector
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-data-collector
+  template:
+    metadata:
+      labels:
+        app: postgres-data-collector
+        version: v1
+    spec:
+      containers:
+      - name: postgres-data-collector
+        image: ghcr.io/dan8992/postgres-data-collector:latest
+        imagePullPolicy: Always
+        env:
+        - name: POSTGRES_HOST
+          value: "postgres-service"
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          value: "finrl_dax"
+        - name: POSTGRES_USER
+          value: "finrl_user"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: POSTGRES_PASSWORD
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          exec:
+            command:
+            - python
+            - -c
+            - "import sys; sys.exit(0)"
+          initialDelaySeconds: 30
+          periodSeconds: 60
+        readinessProbe:
+          exec:
+            command:
+            - python
+            - -c
+            - "import sys; sys.exit(0)"
+          initialDelaySeconds: 10
+          periodSeconds: 30
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-data-collector-service
+  namespace: dax-trading
+  labels:
+    app: postgres-data-collector
+spec:
+  selector:
+    app: postgres-data-collector
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+  type: ClusterIP

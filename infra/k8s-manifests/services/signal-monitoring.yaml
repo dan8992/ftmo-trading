@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: signal-monitoring
+  namespace: dax-trading
+  labels:
+    app: signal-monitoring
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: signal-monitoring
+  template:
+    metadata:
+      labels:
+        app: signal-monitoring
+        version: v1
+    spec:
+      containers:
+      - name: signal-monitoring
+        image: ghcr.io/dan8992/signal-monitoring:latest
+        imagePullPolicy: Always
+        env:
+        - name: POSTGRES_HOST
+          value: "postgres-service"
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          value: "dax_trading"
+        - name: POSTGRES_USER
+          value: "finrl_user"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: POSTGRES_PASSWORD
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 60
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: signal-monitoring-service
+  namespace: dax-trading
+  labels:
+    app: signal-monitoring
+spec:
+  selector:
+    app: signal-monitoring
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+  type: ClusterIP

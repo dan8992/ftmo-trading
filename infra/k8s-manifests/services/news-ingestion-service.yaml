@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: news-ingestion-service
+  namespace: dax-trading
+  labels:
+    app: news-ingestion-service
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: news-ingestion-service
+  template:
+    metadata:
+      labels:
+        app: news-ingestion-service
+        version: v1
+    spec:
+      containers:
+      - name: news-ingestion-service
+        image: ghcr.io/dan8992/news-ingestion-service:latest
+        imagePullPolicy: Always
+        env:
+        - name: POSTGRES_HOST
+          value: "postgres-service"
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          value: "finrl_dax"
+        - name: POSTGRES_USER
+          value: "finrl_user"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: POSTGRES_PASSWORD
+        - name: ALPHA_VANTAGE_KEY
+          valueFrom:
+            secretKeyRef:
+              name: api-keys-secret
+              key: ALPHA_VANTAGE_KEY
+              optional: true
+        - name: FMP_KEY
+          valueFrom:
+            secretKeyRef:
+              name: api-keys-secret
+              key: FMP_KEY
+              optional: true
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          exec:
+            command:
+            - python
+            - -c
+            - "import sys; sys.exit(0)"
+          initialDelaySeconds: 30
+          periodSeconds: 60
+        readinessProbe:
+          exec:
+            command:
+            - python
+            - -c
+            - "import sys; sys.exit(0)"
+          initialDelaySeconds: 10
+          periodSeconds: 30
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: news-ingestion-service-service
+  namespace: dax-trading
+  labels:
+    app: news-ingestion-service
+spec:
+  selector:
+    app: news-ingestion-service
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+  type: ClusterIP

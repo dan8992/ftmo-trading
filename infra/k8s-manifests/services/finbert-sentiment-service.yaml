@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: finbert-sentiment-service
+  namespace: dax-trading
+  labels:
+    app: finbert-sentiment-service
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: finbert-sentiment-service
+  template:
+    metadata:
+      labels:
+        app: finbert-sentiment-service
+        version: v1
+    spec:
+      containers:
+      - name: finbert-sentiment-service
+        image: ghcr.io/dan8992/finbert-sentiment-service:latest
+        imagePullPolicy: Always
+        env:
+        - name: POSTGRES_HOST
+          value: "postgres-service"
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          value: "finrl_dax"
+        - name: POSTGRES_USER
+          value: "finrl_user"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: POSTGRES_PASSWORD
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 120
+          periodSeconds: 60
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 30
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: finbert-sentiment-service-service
+  namespace: dax-trading
+  labels:
+    app: finbert-sentiment-service
+spec:
+  selector:
+    app: finbert-sentiment-service
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+  type: ClusterIP

@@ -33,8 +33,8 @@ jobs:
         COMMIT_SHA=${GITHUB_SHA::8}
         
         # Update image tags in Kubernetes manifests
+        find infra/k8s-manifests -name "*.yaml" -type f -exec sed -i "s|:latest|:main-${COMMIT_SHA}|g" {} \;
         find services -name "k8s-*.yaml" -type f -exec sed -i "s|:latest|:main-${COMMIT_SHA}|g" {} \;
-        find infra -name "*.yaml" -type f -exec sed -i "s|:latest|:main-${COMMIT_SHA}|g" {} \;
         
         # Update Helm chart values if they exist
         if [ -f charts/ftmo-trading/values.yaml ]; then
@@ -79,7 +79,7 @@ jobs:
     - name: Validate Kubernetes manifests
       uses: instrumenta/kubeval-action@master
       with:
-        files: infra/k8s-base,services
+        files: infra/k8s-manifests,infra/k8s-base
         
     - name: Validate Helm charts
       run: |

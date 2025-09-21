@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: signal-generation-engine
+  namespace: dax-trading
+  labels:
+    app: signal-generation-engine
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: signal-generation-engine
+  template:
+    metadata:
+      labels:
+        app: signal-generation-engine
+        version: v1
+    spec:
+      containers:
+      - name: signal-generation-engine
+        image: ghcr.io/dan8992/signal-generation-engine:latest
+        imagePullPolicy: Always
+        env:
+        - name: POSTGRES_HOST
+          value: "postgres-service"
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          value: "finrl_dax"
+        - name: POSTGRES_USER
+          value: "finrl_user"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: POSTGRES_PASSWORD
+        - name: ALPHA_VANTAGE_KEY
+          valueFrom:
+            secretKeyRef:
+              name: api-keys-secret
+              key: ALPHA_VANTAGE_KEY
+              optional: true
+        - name: FMP_KEY
+          valueFrom:
+            secretKeyRef:
+              name: api-keys-secret
+              key: FMP_KEY
+              optional: true
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          exec:
+            command:
+            - python
+            - -c
+            - "import sys; sys.exit(0)"
+          initialDelaySeconds: 60
+          periodSeconds: 120
+        readinessProbe:
+          exec:
+            command:
+            - python
+            - -c
+            - "import sys; sys.exit(0)"
+          initialDelaySeconds: 30
+          periodSeconds: 60
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: signal-generation-engine-service
+  namespace: dax-trading
+  labels:
+    app: signal-generation-engine
+spec:
+  selector:
+    app: signal-generation-engine
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+  type: ClusterIP
