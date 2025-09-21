@@ -9,7 +9,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/dan8992/ftmo-trading.git
-    targetRevision: manifests
+    targetRevision: main
     path: infra/k8s-base
   destination:
     server: https://kubernetes.default.svc
