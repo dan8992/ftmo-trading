@@ -20,6 +20,11 @@ RUN wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz \
 
 # Copy requirements first for better caching
 COPY requirements.txt .
+
+# Install TA-Lib Python wrapper first (requires the C library)
+RUN pip install --no-cache-dir TA-Lib
+
+# Install remaining requirements
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
