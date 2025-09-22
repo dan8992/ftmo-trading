@@ -31,8 +31,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY app/ ./
 
-# Copy common libraries
-COPY ../common-lib/ ./common-lib/
+# Common libraries not needed - services communicate via HTTP APIs
 
 # Create non-root user
 RUN useradd --create-home --shell /bin/bash appuser \
