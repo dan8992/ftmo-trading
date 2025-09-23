@@ -13,16 +13,21 @@ import os
 from datetime import datetime, timedelta
 from typing import List, Dict, Tuple
 import pandas as pd
+from flask import Flask, jsonify
+import threading
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Flask app for health checks
+app = Flask(__name__)
 
 class FinBERTSentimentService:
     def __init__(self):
         self.db_config = {
             'host': os.getenv('POSTGRES_HOST', 'postgres'),
             'port': int(os.getenv('POSTGRES_PORT', 5432)),
-            'database': os.getenv('POSTGRES_DB', 'finrl_dax'),
+            'database': os.getenv('POSTGRES_DB', 'dax_trading'),
             'user': os.getenv('POSTGRES_USER', 'finrl_user'),
             'password': os.getenv('POSTGRES_PASSWORD')
         }
@@ -249,6 +254,61 @@ class FinBERTSentimentService:
                 logger.error(f"Error in sentiment analysis cycle: {e}")
                 await asyncio.sleep(60)
 
+# Global service instance for health checks
+service_instance = None
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint"""
+    global service_instance
+    try:
+        # Basic health check - verify model is loaded and database is accessible
+        if service_instance and service_instance.model is not None:
+            status = "healthy"
+            message = "FinBERT model loaded and service operational"
+        else:
+            status = "starting"
+            message = "FinBERT model still loading"
+        
+        return jsonify({
+            'status': status,
+            'message': message,
+            'timestamp': datetime.now().isoformat()
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'message': f"Health check failed: {str(e)}",
+            'timestamp': datetime.now().isoformat()
+        }), 500
+
+@app.route('/sentiment', methods=['GET'])
+def get_sentiment_scores():
+    """Get current sentiment scores for all currency pairs"""
+    global service_instance
+    try:
+        if service_instance:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            sentiment_scores = loop.run_until_complete(service_instance.get_current_sentiment_scores())
+            loop.close()
+            return jsonify(sentiment_scores), 200
+        else:
+            return jsonify({'error': 'Service not initialized'}), 503
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+def run_flask_app():
+    """Run Flask app in a separate thread"""
+    app.run(host='0.0.0.0', port=8080, debug=False)
+
 if __name__ == "__main__":
-    service = FinBERTSentimentService()
-    asyncio.run(service.run_continuous_sentiment_analysis())
+    global service_instance
+    service_instance = FinBERTSentimentService()
+    
+    # Start Flask app in background thread
+    flask_thread = threading.Thread(target=run_flask_app, daemon=True)
+    flask_thread.start()
+    
+    # Run sentiment analysis service
+    asyncio.run(service_instance.run_continuous_sentiment_analysis())

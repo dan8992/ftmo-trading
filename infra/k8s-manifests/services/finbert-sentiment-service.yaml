@@ -27,7 +27,7 @@ spec:
         - name: POSTGRES_PORT
           value: "5432"
         - name: POSTGRES_DB
-          value: "finrl_dax"
+          value: "dax_trading"
         - name: POSTGRES_USER
           value: "finrl_user"
         - name: POSTGRES_PASSWORD
@@ -42,18 +42,25 @@ spec:
           limits:
             memory: "4Gi"
             cpu: "2000m"
+        ports:
+        - containerPort: 8080
+          name: http
         livenessProbe:
           httpGet:
             path: /health
             port: 8080
-          initialDelaySeconds: 120
+          initialDelaySeconds: 180
           periodSeconds: 60
+          timeoutSeconds: 10
+          failureThreshold: 5
         readinessProbe:
           httpGet:
             path: /health
             port: 8080
-          initialDelaySeconds: 60
+          initialDelaySeconds: 120
           periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
       restartPolicy: Always
 ---
 apiVersion: v1
