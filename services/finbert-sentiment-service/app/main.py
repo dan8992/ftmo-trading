@@ -260,7 +260,6 @@ service_instance = None
 @app.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
-    global service_instance
     try:
         # Basic health check - verify model is loaded and database is accessible
         if service_instance and service_instance.model is not None:
@@ -285,7 +284,6 @@ def health_check():
 @app.route('/sentiment', methods=['GET'])
 def get_sentiment_scores():
     """Get current sentiment scores for all currency pairs"""
-    global service_instance
     try:
         if service_instance:
             loop = asyncio.new_event_loop()
@@ -307,7 +305,6 @@ def run_flask_app():
         logger.error(f"Flask app failed to start: {e}")
 
 if __name__ == "__main__":
-    global service_instance
     service_instance = FinBERTSentimentService()
     
     # Start Flask app in background thread
