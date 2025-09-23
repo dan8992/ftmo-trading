@@ -300,15 +300,25 @@ def get_sentiment_scores():
 
 def run_flask_app():
     """Run Flask app in a separate thread"""
-    app.run(host='0.0.0.0', port=8080, debug=False)
+    try:
+        logger.info("Starting Flask health server on port 8080...")
+        app.run(host='0.0.0.0', port=8080, debug=False, use_reloader=False)
+    except Exception as e:
+        logger.error(f"Flask app failed to start: {e}")
 
 if __name__ == "__main__":
     global service_instance
     service_instance = FinBERTSentimentService()
     
     # Start Flask app in background thread
+    logger.info("Starting Flask health server thread...")
     flask_thread = threading.Thread(target=run_flask_app, daemon=True)
     flask_thread.start()
+    
+    # Give Flask time to start
+    import time
+    time.sleep(3)
+    logger.info("Flask thread started, beginning sentiment analysis...")
     
     # Run sentiment analysis service
     asyncio.run(service_instance.run_continuous_sentiment_analysis())
