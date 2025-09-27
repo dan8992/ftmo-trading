@@ -1,0 +1,79 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: finbert-model-downloader
+  namespace: dax-trading
+  labels:
+    app: model-downloader
+spec:
+  template:
+    metadata:
+      labels:
+        app: model-downloader
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: model-downloader
+        image: python:3.11-slim
+        command: ["/bin/bash"]
+        args: 
+          - -c
+          - |
+            set -e
+            echo "🔄 Installing dependencies..."
+            pip install --no-cache-dir transformers torch huggingface_hub
+            
+            echo "📦 Downloading ProsusAI/finbert model..."
+            python3 -c "
+            from transformers import AutoTokenizer, AutoModelForSequenceClassification
+            import os
+            
+            cache_dir = '/models/finbert'
+            os.makedirs(cache_dir, exist_ok=True)
+            
+            print('Downloading tokenizer...')
+            tokenizer = AutoTokenizer.from_pretrained('ProsusAI/finbert', cache_dir=cache_dir)
+            
+            print('Downloading model...')
+            model = AutoModelForSequenceClassification.from_pretrained('ProsusAI/finbert', cache_dir=cache_dir)
+            
+            print('✅ Model downloaded successfully!')
+            print(f'Model saved to: {cache_dir}')
+            "
+            
+            echo "📦 Downloading nlptown/bert-base-multilingual-uncased-sentiment model..."
+            python3 -c "
+            from transformers import AutoTokenizer, AutoModelForSequenceClassification
+            import os
+            
+            cache_dir = '/models/nlptown'
+            os.makedirs(cache_dir, exist_ok=True)
+            
+            print('Downloading tokenizer...')
+            tokenizer = AutoTokenizer.from_pretrained('nlptown/bert-base-multilingual-uncased-sentiment', cache_dir=cache_dir)
+            
+            print('Downloading model...')
+            model = AutoModelForSequenceClassification.from_pretrained('nlptown/bert-base-multilingual-uncased-sentiment', cache_dir=cache_dir)
+            
+            print('✅ Model downloaded successfully!')
+            print(f'Model saved to: {cache_dir}')
+            "
+            
+            echo "🔍 Listing downloaded files..."
+            find /models -type f -name "*.bin" -o -name "*.json" -o -name "*.txt" | head -20
+            
+            echo "✅ Model download job completed successfully!"
+        volumeMounts:
+        - name: model-storage
+          mountPath: /models
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1"
+      volumes:
+      - name: model-storage
+        persistentVolumeClaim:
+          claimName: dax-models-pvc  # Use existing enterprise storage

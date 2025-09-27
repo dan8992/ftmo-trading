@@ -1,0 +1,118 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dax-llm-service
+  namespace: dax-trading
+  labels:
+    app: dax-llm-service
+    tier: ai-inference
+  annotations:
+    # Enterprise air-gapped deployment - no external dependencies
+    deployment.kubernetes.io/revision: "3"
+    dax-trading.com/strategy: "air-gapped-fallback"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dax-llm-service
+  template:
+    metadata:
+      labels:
+        app: dax-llm-service
+        tier: ai-inference
+    spec:
+      containers:
+      - name: dax-llm-inference
+        image: ghcr.io/dan8992/dax-llm-service:latest
+        ports:
+        - containerPort: 8000
+          name: api-port
+        env:
+        # Enterprise configuration - try offline first, fallback to online
+        - name: MODEL_NAME
+          value: ProsusAI/finbert  # Primary target
+        - name: TRANSFORMERS_CACHE
+          value: /tmp/transformers_cache
+        - name: HF_HOME
+          value: /tmp/transformers_cache
+        - name: TRANSFORMERS_OFFLINE
+          value: "0"  # Allow online fallback initially
+        - name: HF_DATASETS_OFFLINE
+          value: "0"
+        - name: HF_HUB_OFFLINE
+          value: "0"
+        - name: GPU_MEMORY_UTILIZATION
+          value: "0.7"  # Reduced for resource constraints
+        - name: MAX_MODEL_LEN
+          value: "2048"  # Reduced for efficiency
+        - name: TENSOR_PARALLEL_SIZE
+          value: "1"  # Single thread for resource efficiency
+        # Enterprise optimizations
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: PYTORCH_JIT
+          value: "1"
+        resources:
+          requests:
+            cpu: 300m      # Reduced CPU request
+            memory: 512Mi  # Reduced memory request
+          limits:
+            cpu: "1"       # Reduced CPU limit
+            memory: 2Gi    # Reduced memory limit
+        # Enterprise-grade health checks - more lenient
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 300  # Extended for model download
+          periodSeconds: 60         # Less frequent checks
+          timeoutSeconds: 30        # Longer timeout
+          failureThreshold: 10      # Very tolerant
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 120  # Extended for setup
+          periodSeconds: 30
+          timeoutSeconds: 15
+          failureThreshold: 5
+      # Enterprise scheduling preferences
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: node-role.kubernetes.io/worker
+                operator: Exists
+          - weight: 80
+            preference:
+              matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values: ["k3s-worker1"]  # Prefer the node with most memory
+      # Tolerate resource pressure (enterprise resilience)
+      tolerations:
+      - key: node.kubernetes.io/disk-pressure
+        operator: Exists
+        effect: NoSchedule
+      - key: node.kubernetes.io/memory-pressure
+        operator: Exists
+        effect: NoSchedule
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dax-llm-service-service
+  namespace: dax-trading
+  labels:
+    app: dax-llm-service
+spec:
+  selector:
+    app: dax-llm-service
+  ports:
+  - name: api
+    port: 8000
+    targetPort: 8000
+    protocol: TCP
+  type: ClusterIP

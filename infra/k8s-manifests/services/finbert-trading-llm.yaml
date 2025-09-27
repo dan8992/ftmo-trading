@@ -31,6 +31,19 @@ spec:
           value: production
         - name: MODEL_CACHE_DIR
           value: /tmp/model_cache
+        - name: POSTGRES_HOST
+          value: "postgres-service"
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          value: "finrl_dax"
+        - name: POSTGRES_USER
+          value: "finrl_user"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: POSTGRES_PASSWORD
         resources:
           requests:
             cpu: 1000m

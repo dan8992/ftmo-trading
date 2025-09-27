@@ -6,6 +6,10 @@ metadata:
   labels:
     app: dax-llm-service
     tier: ai-inference
+  annotations:
+    # Enterprise deployment pattern for air-gapped environments
+    deployment.kubernetes.io/revision: "2"
+    dax-trading.com/model-strategy: "persistent-volume-offline"
 spec:
   replicas: 1
   selector:
@@ -16,6 +20,9 @@ spec:
       labels:
         app: dax-llm-service
         tier: ai-inference
+      annotations:
+        # Force pod recreation when PVC changes
+        dax-trading.com/model-volume-version: "v1"
     spec:
       containers:
       - name: dax-llm-inference
@@ -24,16 +31,26 @@ spec:
         - containerPort: 8000
           name: api-port
         env:
+        # Enterprise environment configuration
         - name: MODEL_NAME
-          value: nlptown/bert-base-multilingual-uncased-sentiment
+          value: ProsusAI/finbert  # Use the model the code expects
         - name: TRANSFORMERS_CACHE
           value: /tmp/transformers_cache
+        - name: HF_HOME
+          value: /tmp/hf_cache
+        - name: HF_HUB_DISABLE_TELEMETRY
+          value: "1"  # Disable telemetry for faster loading
         - name: GPU_MEMORY_UTILIZATION
           value: "0.9"
         - name: MAX_MODEL_LEN
           value: "4096"
         - name: TENSOR_PARALLEL_SIZE
           value: "2"
+        # Enterprise security and performance
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: PYTORCH_JIT
+          value: "1"
         resources:
           requests:
             cpu: 500m
@@ -41,20 +58,23 @@ spec:
           limits:
             cpu: "2"
             memory: 4Gi
+        # Enterprise-grade health checks with model loading considerations
         livenessProbe:
           httpGet:
             path: /health
             port: 8000
-          initialDelaySeconds: 120
+          initialDelaySeconds: 180  # Extended for model loading
           periodSeconds: 30
           timeoutSeconds: 10
+          failureThreshold: 5  # More tolerant for heavy model operations
         readinessProbe:
           httpGet:
             path: /health
             port: 8000
-          initialDelaySeconds: 60
+          initialDelaySeconds: 90   # Extended for model loading
           periodSeconds: 10
           timeoutSeconds: 5
+          failureThreshold: 3
 ---
 apiVersion: v1
 kind: Service
